@@ -1,26 +1,57 @@
-import React from 'react';
+import React, { Component } from 'react';
 import { Switch, Route } from "react-router-dom";
 import './App.css';
 import HomePage from "./pages/homepage/homepage.component";
 import ShopPage from './pages/shop/shop.component';
 import AuthPage from "./pages/auth-page/auth-page";
 import Header from "./components/header.component/header";
+import { auth, createUserProfileDocument } from "./firebase/firebase.utils";
 
+class App extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      currentUser: null,
+    }
+  }
 
-function App() {
-  return (
-    <React.Fragment>
-      <Header />
-      <div>
-        <Switch>
-          <Route exact path="/" component={HomePage} />
-          <Route path="/shop" component={ShopPage} />
-          <Route path="/signin" component={AuthPage} />
-        </Switch>
-      </div>
+  unsubscribeFromAuth = null;
 
-    </React.Fragment>
-  );
+  componentDidMount() {
+    this.unsubscribeFromAuth = auth.onAuthStateChanged(async userAuth => {
+      if (userAuth) {
+        const userRef = await createUserProfileDocument(userAuth);
+        userRef.onSnapshot(snapShot => {
+          this.setState({
+            currentUser: {
+              id: snapShot.id,
+              ...snapShot.data(),
+            }
+          });
+        })
+      }
+      this.setState({ currentUser: userAuth });
+    });
+  }
+
+  componentWillUnmount() {
+    this.unsubscribeFromAuth();
+  }
+
+  render() {
+    return (
+      <React.Fragment>
+        <Header currentUser={this.state.currentUser} />
+        <div>
+          <Switch>
+            <Route exact path="/" component={HomePage} />
+            <Route path="/shop" component={ShopPage} />
+            <Route path="/signin" component={AuthPage} />
+          </Switch>
+        </div>
+
+      </React.Fragment>
+    );
+  }
 }
-
 export default App;
